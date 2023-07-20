@@ -1,13 +1,17 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
+import { RGBELoader } from "three/addons/loaders/RGBELoader";
+import { EXRLoader } from "three/addons/loaders/EXRLoader";
+import { GroundProjectedSkybox } from "three/addons/objects/GroundProjectedSkybox";
 import * as dat from "lil-gui";
 
 // Loaders
 const gltfLoader = new GLTFLoader();
 const cubeTextureLoader = new THREE.CubeTextureLoader();
 const rgbeLoader = new RGBELoader();
+const exrLoader = new EXRLoader();
+const textureLoader = new THREE.TextureLoader();
 
 // Parameterconst parameter = {
 
@@ -57,11 +61,66 @@ gui
 // ]);
 // scene.environment = environmentMap;
 // scene.background = environmentMap;
-rgbeLoader.load("/environmentMaps/blender2k.hdr", (environmentMap) => {
-  environmentMap.mapping = THREE.EquirectangularReflectionMapping;
-  //   scene.background = environmentMap;
-  scene.environment = environmentMap;
+// rgbeLoader.load("/environmentMaps/blender2k.hdr", (environmentMap) => {
+//   environmentMap.mapping = THREE.EquirectangularReflectionMapping;
+//   //   scene.background = environmentMap;
+//   scene.environment = environmentMap;
+// });
+// exrLoader.load("/environmentMaps/nvidiaCanvas-4k.exr", (environmentMap) => {
+//   environmentMap.mapping = THREE.EquirectangularReflectionMapping;
+//   scene.background = environmentMap;
+//   scene.environment = environmentMap;
+// });
+// const environmentMap = textureLoader.load(
+//   "/environmentMaps/interior_views_cozy_wood_cabin_with_cauldron_and_p.jpg"
+// );
+// environmentMap.mapping = THREE.EquirectangularReflectionMapping;
+// environmentMap.colorSpace = THREE.SRGBColorSpace;
+// scene.background = environmentMap;
+// scene.environment = environmentMap;
+
+// ground rendered skybox
+// rgbeLoader.load("/environmentMaps/2/2k.hdr", (environmentMap) => {
+//   environmentMap.mapping = THREE.EquirectangularReflectionMapping;
+//   //   scene.background = environmentMap;
+//   scene.environment = environmentMap;
+
+//   const skybox = new GroundProjectedSkybox(environmentMap);
+//   skybox.scale.setScalar(50);
+//   skybox.radius = 150;
+//   skybox.height = 11;
+//   scene.add(skybox);
+//   gui.add(skybox, "radius").min(1).max(200).step(0.1).name("skyboxRadius");
+//   gui.add(skybox, "height").min(1).max(100).step(0.1).name("skyboxHeight");
+// });
+
+// Real time environment map
+const environmentMap = textureLoader.load(
+  "/environmentMaps/blockadesLabsSkybox/interior_views_cozy_wood_cabin_with_cauldron_and_p.jpg"
+);
+environmentMap.mapping = THREE.EquirectangularReflectionMapping;
+environmentMap.colorSpace = THREE.SRGBColorSpace;
+scene.background = environmentMap;
+
+// Holy Donut
+const holyDonut = new THREE.Mesh(
+  new THREE.TorusGeometry(8, 0.5),
+  new THREE.MeshBasicMaterial({ color: new THREE.Color(10, 4, 2) })
+);
+holyDonut.position.y = 3.5;
+holyDonut.layers.enable(1);
+scene.add(holyDonut);
+
+// Cube render target
+const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, {
+  type: THREE.HalfFloatType,
 });
+
+scene.environment = cubeRenderTarget.texture;
+
+// Cube camera
+const cubeCamera = new THREE.CubeCamera(0.1, 100, cubeRenderTarget);
+cubeCamera.layers.set(1);
 
 /**
  * Torus Knot
@@ -69,7 +128,7 @@ rgbeLoader.load("/environmentMaps/blender2k.hdr", (environmentMap) => {
 const torusKnot = new THREE.Mesh(
   new THREE.TorusKnotGeometry(1, 0.4, 100, 16),
   new THREE.MeshStandardMaterial({
-    roughness: 0.3,
+    roughness: 0,
     metalness: 1,
     color: 0xaaaaaa,
   })
@@ -141,6 +200,12 @@ const clock = new THREE.Clock();
 const tick = () => {
   // Time
   const elapsedTime = clock.getElapsedTime();
+
+  // Real time enviornment map
+  if (holyDonut) {
+    holyDonut.rotation.x = Math.sin(elapsedTime) * 2;
+    cubeCamera.update(renderer, scene);
+  }
 
   // Update controls
   controls.update();
